@@ -1,6 +1,6 @@
 #!/usr/bin/env groovy
 
-@Library('lco-shared-libs@0.0.1') _
+@Library('lco-shared-libs@feature/slack') _
 
 pipeline {
 	agent any
@@ -14,12 +14,12 @@ pipeline {
 			}
 		}
 	}
-}
-post {
-	success {
-		slackSend color: 'good', message: 'Built successfully', channel: '@bkurczynski'
-	}
-	failure {
-		slackSend color: 'bad', message: 'Build failed', channel: '@bkurczynski'
+	post {
+		success {
+			slackSend color: 'good', message: 'Built successfully', channel: '@bkurczynski'
+		}
+		failure {
+			slack()
+		}
 	}
 }
