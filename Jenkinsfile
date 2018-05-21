@@ -15,6 +15,8 @@ pipeline {
 		}
 	}
 	post {
-		slack()
+		always {
+			slack()
+		}
 	}
 }
