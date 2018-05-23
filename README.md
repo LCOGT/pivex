@@ -1,12 +1,30 @@
 # pivex
 
-## Installation
-
 ### Prerequisites
-- Go
+- Go	
+	If you don't have Go environment created already:
+	```
+	mkdir -p ~/go/{src,bin,pkg}
+	export GOPATH="~/go"
+	```
 - Pivotal API key
-- Google account
+- Google API credentials	
+	Download the `pivex` JSON credentials from [here](https://console.developers.google.com/apis/credentials?project=lco-internal&folder&organizationId=78492096084)
+	and rename it to `pivex-creds.json` then:
+	```
+	mkdir ~/.google-api
+	mv pivex-creds.json ~/.google-api
+	```
+
+## Installation
+```
+go get
+go install
+```
 
 ## Usage
+```
+pivex
+```
 
 ## Examples

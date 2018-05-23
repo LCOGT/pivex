@@ -15,9 +15,12 @@ import (
 	"pivex/pivotal"
 	"google.golang.org/api/drive/v3"
 	"strconv"
+	"os/user"
 )
 
 type GSlides struct {
+	apiCreds string
+	apiToken string
 }
 
 var (
@@ -25,6 +28,16 @@ var (
 	gsSrv     *slides.Service
 
 	logger = log.New(os.Stdout, "logger: ", log.Lshortfile)
+	googleApiRoot = func() string {
+		usr, err := user.Current()
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		return fmt.Sprintf("%s/.google-api", usr.HomeDir)
+	}()
+	apiCreds = googleApiRoot + "/pivex-creds.json"
+	apiToken = googleApiRoot + "/pivex-token.json"
 )
 
 func New() *GSlides {
@@ -37,11 +50,15 @@ func New() *GSlides {
 
 // Retrieve a token, saves the token, then returns the generated client.
 func getClient(config *oauth2.Config) *http.Client {
-	tokFile := "token.json"
-	tok, err := tokenFromFile(tokFile)
+	if _, err := os.Stat(googleApiRoot); os.IsNotExist(err) {
+		os.Mkdir(googleApiRoot, 0600)
+	}
+
+	tok, err := tokenFromFile(apiToken)
+
 	if err != nil {
 		tok = getTokenFromWeb(config)
-		saveToken(tokFile, tok)
+		saveToken(apiToken, tok)
 	}
 	return config.Client(context.Background(), tok)
 }
@@ -49,8 +66,10 @@ func getClient(config *oauth2.Config) *http.Client {
 // Request a token from the web, then returns the retrieved token.
 func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
-	fmt.Printf("Go to the following link in your browser then type the "+
-		"authorization code: \n%v\n", authURL)
+	fmt.Printf(
+		"Go to the following link in your browser and copy the authorization code, then paste it in the line " +
+			"below\n%v\nAuthorization code: ",
+			authURL)
 
 	var authCode string
 	if _, err := fmt.Scan(&authCode); err != nil {
@@ -88,7 +107,7 @@ func saveToken(path string, token *oauth2.Token) {
 }
 
 func getClients() (driveSrv *drive.Service, slidesSrv *slides.Service) {
-	b, err := ioutil.ReadFile("client_secret.json")
+	b, err := ioutil.ReadFile(apiCreds)
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
 	}
@@ -218,4 +237,11 @@ func createPres(pivInterval *pivotal.Interval) {
 
 func (gs *GSlides) Export(pivInterval *pivotal.Interval) {
 	createPres(pivInterval)
+}
+
+func (gs *GSlides) DelAuth() {
+	os.Remove(apiCreds)
+	os.Remove(apiToken)
+
+	logger.Printf("Deleted authentication files\n%s\n%s", apiCreds, apiToken)
 }
