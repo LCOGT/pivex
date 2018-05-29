@@ -24,7 +24,7 @@ type Interval struct {
 	Start        string  `json:"start"`
 	Finish       string  `json:"finish"`
 	Kind         string  `json:"kind"`
-}
+}gslides
 
 type Story struct {
 	Kind          string  `json:"kind"`
@@ -57,10 +57,12 @@ var client = http.Client{
 
 }
 
-func New() *Pivotal {
-	pivUrl := "https://www.pivotaltracker.com/services/v5/projects"
-	projectId := 1314272
+const (
+	pivUrl    = "https://www.pivotaltracker.com/services/v5/projects"
+	projectId = 1314272
+)
 
+func New() *Pivotal {
 	piv := Pivotal{
 		pivUrl:    pivUrl,
 		projUrl:   pivUrl + "/" + strconv.Itoa(projectId),

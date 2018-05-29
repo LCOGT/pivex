@@ -1,4 +1,4 @@
-package gslides
+package export
 
 import (
 	"encoding/json"
@@ -7,15 +7,14 @@ import (
 	"log"
 	"net/http"
 	"os"
-
+	"pivex/pivex"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/slides/v1"
-	"pivex/pivotal"
+	"pivex/pivex/pivotal"
 	"google.golang.org/api/drive/v3"
 	"strconv"
-	"os/user"
 )
 
 type GSlides struct {
@@ -26,18 +25,8 @@ type GSlides struct {
 var (
 	gDriveSrv *drive.Service
 	gsSrv     *slides.Service
-
-	logger = log.New(os.Stdout, "logger: ", log.Lshortfile)
-	googleApiRoot = func() string {
-		usr, err := user.Current()
-		if err != nil {
-			logger.Fatal(err)
-		}
-
-		return fmt.Sprintf("%s/.google-api", usr.HomeDir)
-	}()
-	apiCreds = googleApiRoot + "/pivex-creds.json"
-	apiToken = googleApiRoot + "/pivex-token.json"
+	apiCreds  = pivex.ApiCreds + "/pivex-creds.json"
+	apiToken  = pivex.ApiCreds + "/pivex-token.json"
 )
 
 func New() *GSlides {
@@ -50,8 +39,8 @@ func New() *GSlides {
 
 // Retrieve a token, saves the token, then returns the generated client.
 func getClient(config *oauth2.Config) *http.Client {
-	if _, err := os.Stat(googleApiRoot); os.IsNotExist(err) {
-		os.Mkdir(googleApiRoot, 0600)
+	if _, err := os.Stat(pivex.ApiCreds); os.IsNotExist(err) {
+		os.Mkdir(pivex.ApiCreds, 0600)
 	}
 
 	tok, err := tokenFromFile(apiToken)
@@ -67,9 +56,9 @@ func getClient(config *oauth2.Config) *http.Client {
 func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
 	fmt.Printf(
-		"Go to the following link in your browser and copy the authorization code, then paste it in the line " +
+		"Go to the following link in your browser and copy the authorization code, then paste it in the line "+
 			"below\n%v\nAuthorization code: ",
-			authURL)
+		authURL)
 
 	var authCode string
 	if _, err := fmt.Scan(&authCode); err != nil {
@@ -143,17 +132,17 @@ func delExisting(slideName string) {
 		Fields("nextPageToken, files(id, name)").Do()
 
 	if err != nil {
-		logger.Fatalf("Unable to retrieve files: %v", err)
+		pivex.Logger.Fatalf("Unable to retrieve files: %v", err)
 	}
 
 	if len(r.Files) == 0 {
-		logger.Printf("No files named %s exist", slideName)
+		pivex.Logger.Printf("No files named %s exist", slideName)
 	} else {
 		for _, i := range r.Files {
 			if i.Name == slideName {
 				gDriveSrv.Files.Delete(i.Id).Do()
 
-				logger.Printf("Deleted filename %s (%s)", i.Name, i.Id)
+				pivex.Logger.Printf("Deleted filename %s (%s)", i.Name, i.Id)
 			}
 		}
 	}
@@ -243,5 +232,5 @@ func (gs *GSlides) DelAuth() {
 	os.Remove(apiCreds)
 	os.Remove(apiToken)
 
-	logger.Printf("Deleted authentication files\n%s\n%s", apiCreds, apiToken)
+	pivex.Logger.Printf("Deleted authentication files\n%s\n%s", apiCreds, apiToken)
 }
