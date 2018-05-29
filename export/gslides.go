@@ -7,48 +7,49 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"pivex/pivex"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/slides/v1"
-	"pivex/pivex/pivotal"
+	"pivex/pivotal"
 	"google.golang.org/api/drive/v3"
 	"strconv"
 )
 
 type GSlides struct {
-	apiCreds string
-	apiToken string
-}
-
-var (
+	credsPath string
+	apiCreds  string
+	apiToken  string
 	gDriveSrv *drive.Service
 	gsSrv     *slides.Service
-	apiCreds  = pivex.ApiCreds + "/pivex-creds.json"
-	apiToken  = pivex.ApiCreds + "/pivex-token.json"
-)
+	logger    *log.Logger
+}
 
-func New() *GSlides {
-	gDriveSrv, gsSrv = getClients()
+func New(credsPath string, logger *log.Logger) *GSlides {
+	apiCreds := fmt.Sprintf("%s/pivex-creds.json", credsPath)
+	gDriveSrv, gsSrv := getClients(apiCreds)
 
-	gs := GSlides{}
+	gs := GSlides{
+		credsPath: credsPath,
+		apiCreds:  apiCreds,
+		apiToken:  fmt.Sprintf("%s/pivex-token.json", credsPath),
+		gDriveSrv: gDriveSrv,
+		gsSrv:     gsSrv,
+		logger: logger,
+	}
 
 	return &gs
 }
 
 // Retrieve a token, saves the token, then returns the generated client.
-func getClient(config *oauth2.Config) *http.Client {
-	if _, err := os.Stat(pivex.ApiCreds); os.IsNotExist(err) {
-		os.Mkdir(pivex.ApiCreds, 0600)
-	}
-
+func getClient(config *oauth2.Config, apiToken string) *http.Client {
 	tok, err := tokenFromFile(apiToken)
 
 	if err != nil {
 		tok = getTokenFromWeb(config)
 		saveToken(apiToken, tok)
 	}
+
 	return config.Client(context.Background(), tok)
 }
 
@@ -95,13 +96,13 @@ func saveToken(path string, token *oauth2.Token) {
 	json.NewEncoder(f).Encode(token)
 }
 
-func getClients() (driveSrv *drive.Service, slidesSrv *slides.Service) {
+func getClients(apiCreds string) (driveSrv *drive.Service, slidesSrv *slides.Service) {
 	b, err := ioutil.ReadFile(apiCreds)
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
 	}
 
-	// If modifying these scopes, delete your previously saved client_secret.json.
+	// If modifying these scopes, delete your previously saved client_secret.json
 	config, err := google.ConfigFromJSON(
 		b,
 		"https://www.googleapis.com/auth/presentations.readonly",
@@ -112,12 +113,12 @@ func getClients() (driveSrv *drive.Service, slidesSrv *slides.Service) {
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
 	}
 
-	driveSrv, err = drive.New(getClient(config))
+	driveSrv, err = drive.New(getClient(config, apiCreds))
 	if err != nil {
 		log.Fatalf("Unable to retrieve Drive client: %v", err)
 	}
 
-	client := getClient(config)
+	client := getClient(config, apiCreds)
 
 	slidesSrv, err = slides.New(client)
 	if err != nil {
@@ -127,22 +128,22 @@ func getClients() (driveSrv *drive.Service, slidesSrv *slides.Service) {
 	return
 }
 
-func delExisting(slideName string) {
-	r, err := gDriveSrv.Files.List().PageSize(10).
+func (gs *GSlides) delExisting(slideName string) {
+	r, err := gs.gDriveSrv.Files.List().PageSize(10).
 		Fields("nextPageToken, files(id, name)").Do()
 
 	if err != nil {
-		pivex.Logger.Fatalf("Unable to retrieve files: %v", err)
+		gs.logger.Fatalf("Unable to retrieve files: %v", err)
 	}
 
 	if len(r.Files) == 0 {
-		pivex.Logger.Printf("No files named %s exist", slideName)
+		gs.logger.Printf("No files named %s exist", slideName)
 	} else {
 		for _, i := range r.Files {
 			if i.Name == slideName {
-				gDriveSrv.Files.Delete(i.Id).Do()
+				gs.gDriveSrv.Files.Delete(i.Id).Do()
 
-				pivex.Logger.Printf("Deleted filename %s (%s)", i.Name, i.Id)
+				gs.logger.Printf("Deleted filename %s (%s)", i.Name, i.Id)
 			}
 		}
 	}
@@ -196,15 +197,15 @@ func genSlides(stories *[]pivotal.Story) ([]*slides.Request) {
 	return requests
 }
 
-func createPres(pivInterval *pivotal.Interval) {
+func (gs *GSlides) createPres(pivInterval *pivotal.Interval) {
 	slideName := "sprint-" + strconv.Itoa(pivInterval.Number)
 
-	delExisting(slideName)
+	gs.delExisting(slideName)
 
 	p := &slides.Presentation{
 		Title: slideName,
 	}
-	presentation, err := gsSrv.Presentations.Create(p).Fields(
+	presentation, err := gs.gsSrv.Presentations.Create(p).Fields(
 		"presentationId",
 	).Do()
 	if err != nil {
@@ -217,7 +218,7 @@ func createPres(pivInterval *pivotal.Interval) {
 	body := &slides.BatchUpdatePresentationRequest{
 		Requests: requests,
 	}
-	response, err := gsSrv.Presentations.BatchUpdate(presentation.PresentationId, body).Do()
+	response, err := gs.gsSrv.Presentations.BatchUpdate(presentation.PresentationId, body).Do()
 	if err != nil {
 		log.Fatalf("Unable to create slide. %v", err)
 	}
@@ -225,12 +226,12 @@ func createPres(pivInterval *pivotal.Interval) {
 }
 
 func (gs *GSlides) Export(pivInterval *pivotal.Interval) {
-	createPres(pivInterval)
+	gs.createPres(pivInterval)
 }
 
 func (gs *GSlides) DelAuth() {
-	os.Remove(apiCreds)
-	os.Remove(apiToken)
+	os.Remove(gs.apiCreds)
+	os.Remove(gs.apiToken)
 
-	pivex.Logger.Printf("Deleted authentication files\n%s\n%s", apiCreds, apiToken)
+	gs.logger.Printf("Deleted authentication files\n%s\n%s", gs.apiCreds, gs.apiToken)
 }

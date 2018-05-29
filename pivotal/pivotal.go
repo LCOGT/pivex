@@ -3,8 +3,8 @@ package pivotal
 import (
 	"net/http"
 	"encoding/json"
-	"os"
 	"strconv"
+	"log"
 )
 
 type Pivotal struct {
@@ -13,6 +13,7 @@ type Pivotal struct {
 	projectId int
 	apiToken  string
 	Intervals []Interval
+	logger    *log.Logger
 }
 
 type Interval struct {
@@ -24,7 +25,7 @@ type Interval struct {
 	Start        string  `json:"start"`
 	Finish       string  `json:"finish"`
 	Kind         string  `json:"kind"`
-}gslides
+}
 
 type Story struct {
 	Kind          string  `json:"kind"`
@@ -62,31 +63,40 @@ const (
 	projectId = 1314272
 )
 
-func New() *Pivotal {
+// TODO: See if Go has something like kwargs, doesn't look like New functions can be overloaded
+func New(apiToken string, logger *log.Logger) *Pivotal {
+	if apiToken == "" {
+		apiToken = loadTokenFile()
+	}
+
 	piv := Pivotal{
 		pivUrl:    pivUrl,
 		projUrl:   pivUrl + "/" + strconv.Itoa(projectId),
 		projectId: projectId,
-		// TODO: Load from file and arg instead
-		apiToken: os.Getenv("PIVOTAL_API_TOKEN"),
+		apiToken:  apiToken,
+		logger:    logger,
 	}
 
 	return &piv
 }
 
+func loadTokenFile() (apiToken string) {
+	return ""
+}
+
 func (piv *Pivotal) GetStories() {
 	req, err := http.NewRequest("GET", piv.projUrl+"/iterations?scope=current", nil)
 	if err != nil {
-		panic(err)
+		piv.logger.Fatalf("Error creating request: %s", err)
 	}
 
 	req.Header.Set("X-TrackerToken", piv.apiToken)
 
 	resp, err := client.Do(req)
 
-	json.NewDecoder(resp.Body).Decode(&piv.Intervals)
-
 	if err != nil {
-		panic(err)
+		piv.logger.Fatalf("Error sending request: %s", err)
 	}
+
+	json.NewDecoder(resp.Body).Decode(&piv.Intervals)
 }
