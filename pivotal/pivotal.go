@@ -5,15 +5,20 @@ import (
 	"encoding/json"
 	"strconv"
 	"log"
+	"os"
+	"fmt"
+	"bufio"
+	"io/ioutil"
 )
 
 type Pivotal struct {
-	pivUrl    string
-	projUrl   string
-	projectId int
-	apiToken  string
-	Intervals []Interval
-	logger    *log.Logger
+	credsPath    string
+	pivUrl       string
+	projUrl      string
+	projectId    int
+	apiToken     string
+	Intervals    []Interval
+	logger       *log.Logger
 }
 
 type Interval struct {
@@ -64,12 +69,17 @@ const (
 )
 
 // TODO: See if Go has something like kwargs, doesn't look like New functions can be overloaded
-func New(apiToken string, logger *log.Logger) *Pivotal {
+func New(apiToken string, credsPath string, logger *log.Logger) *Pivotal {
+	apiTokenFile := fmt.Sprintf("%s/pivotal-token", credsPath)
+
 	if apiToken == "" {
-		apiToken = loadTokenFile()
+		apiToken = readTokenFile(apiTokenFile)
+	} else {
+		writeTokenFile(apiTokenFile, apiToken)
 	}
 
 	piv := Pivotal{
+		credsPath: credsPath,
 		pivUrl:    pivUrl,
 		projUrl:   pivUrl + "/" + strconv.Itoa(projectId),
 		projectId: projectId,
@@ -80,8 +90,30 @@ func New(apiToken string, logger *log.Logger) *Pivotal {
 	return &piv
 }
 
-func loadTokenFile() (apiToken string) {
-	return ""
+func readTokenFile(filePath string) (apiToken string) {
+	f, err := os.Open(filePath)
+	defer f.Close()
+
+	if err != nil {
+		log.Fatalf("Unable to read token file %s: %v", filePath, err)
+	}
+
+	scanner := bufio.NewScanner(f)
+	// TODO: Only reads one line
+	for scanner.Scan() {
+		apiToken = scanner.Text()
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	return
+}
+
+func writeTokenFile(filePath string, apiToken string) {
+	fData := []byte(apiToken + "\n")
+	ioutil.WriteFile(filePath, fData, 0600)
 }
 
 func (piv *Pivotal) GetStories() {
@@ -96,6 +128,10 @@ func (piv *Pivotal) GetStories() {
 
 	if err != nil {
 		piv.logger.Fatalf("Error sending request: %s", err)
+	}
+
+	if resp.StatusCode != 200 {
+		piv.logger.Fatalf("Error getting Pivotal data: %s", resp.Status)
 	}
 
 	json.NewDecoder(resp.Body).Decode(&piv.Intervals)

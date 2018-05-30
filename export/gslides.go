@@ -26,13 +26,13 @@ type GSlides struct {
 }
 
 func New(credsPath string, logger *log.Logger) *GSlides {
-	apiCreds := fmt.Sprintf("%s/pivex-creds.json", credsPath)
+	apiCreds := fmt.Sprintf("%s/api-creds.json", credsPath)
 	gDriveSrv, gsSrv := getClients(apiCreds)
 
 	gs := GSlides{
 		credsPath: credsPath,
 		apiCreds:  apiCreds,
-		apiToken:  fmt.Sprintf("%s/pivex-token.json", credsPath),
+		apiToken:  fmt.Sprintf("%s/api-token.json", credsPath),
 		gDriveSrv: gDriveSrv,
 		gsSrv:     gsSrv,
 		logger: logger,
@@ -82,24 +82,26 @@ func tokenFromFile(file string) (*oauth2.Token, error) {
 	}
 	tok := &oauth2.Token{}
 	err = json.NewDecoder(f).Decode(tok)
+
 	return tok, err
 }
 
 // Saves a token to a file path.
 func saveToken(path string, token *oauth2.Token) {
-	fmt.Printf("Saving credential file to: %s\n", path)
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	defer f.Close()
+
 	if err != nil {
 		log.Fatalf("Unable to cache oauth token: %v", err)
 	}
+
 	json.NewEncoder(f).Encode(token)
 }
 
 func getClients(apiCreds string) (driveSrv *drive.Service, slidesSrv *slides.Service) {
 	b, err := ioutil.ReadFile(apiCreds)
 	if err != nil {
-		log.Fatalf("Unable to read client secret file: %v", err)
+		log.Printf("Unable to read client secret file: %v", err)
 	}
 
 	// If modifying these scopes, delete your previously saved client_secret.json

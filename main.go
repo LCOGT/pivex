@@ -38,14 +38,16 @@ func main() {
 			credsPath))
 	flag.Parse()
 
-	piv := pivotal.New(*pivApiTok, logger)
+	piv := pivotal.New(*pivApiTok, credsPath, logger)
 	gs := export.New(credsPath, logger)
-
-	piv.GetStories()
 
 	if *delAuth {
 		gs.DelAuth()
+
+		os.Exit(0)
 	}
+
+	piv.GetStories()
 
 	gs.Export(&piv.Intervals[0])
 }
