@@ -19,7 +19,7 @@ import (
 type GSlides struct {
 	credsPath string
 	apiCreds  string
-	apiToken  string
+	apiTok    string
 	gDriveSrv *drive.Service
 	gsSrv     *slides.Service
 	logger    *log.Logger
@@ -27,15 +27,16 @@ type GSlides struct {
 
 func New(credsPath string, logger *log.Logger) *GSlides {
 	apiCreds := fmt.Sprintf("%s/api-creds.json", credsPath)
-	gDriveSrv, gsSrv := getClients(apiCreds)
+	apiTok := fmt.Sprintf("%s/api-token.json", credsPath)
+	gDriveSrv, gsSrv := getClients(apiCreds, apiTok)
 
 	gs := GSlides{
 		credsPath: credsPath,
 		apiCreds:  apiCreds,
-		apiToken:  fmt.Sprintf("%s/api-token.json", credsPath),
+		apiTok:    apiTok,
 		gDriveSrv: gDriveSrv,
 		gsSrv:     gsSrv,
-		logger: logger,
+		logger:    logger,
 	}
 
 	return &gs
@@ -98,7 +99,7 @@ func saveToken(path string, token *oauth2.Token) {
 	json.NewEncoder(f).Encode(token)
 }
 
-func getClients(apiCreds string) (driveSrv *drive.Service, slidesSrv *slides.Service) {
+func getClients(apiCreds string, apiTok string) (driveSrv *drive.Service, slidesSrv *slides.Service) {
 	b, err := ioutil.ReadFile(apiCreds)
 	if err != nil {
 		log.Printf("Unable to read client secret file: %v", err)
@@ -115,12 +116,12 @@ func getClients(apiCreds string) (driveSrv *drive.Service, slidesSrv *slides.Ser
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
 	}
 
-	driveSrv, err = drive.New(getClient(config, apiCreds))
+	driveSrv, err = drive.New(getClient(config, apiTok))
 	if err != nil {
 		log.Fatalf("Unable to retrieve Drive client: %v", err)
 	}
 
-	client := getClient(config, apiCreds)
+	client := getClient(config, apiTok)
 
 	slidesSrv, err = slides.New(client)
 	if err != nil {
@@ -233,7 +234,7 @@ func (gs *GSlides) Export(pivInterval *pivotal.Interval) {
 
 func (gs *GSlides) DelAuth() {
 	os.Remove(gs.apiCreds)
-	os.Remove(gs.apiToken)
+	os.Remove(gs.apiTok)
 
-	gs.logger.Printf("Deleted authentication files\n%s\n%s", gs.apiCreds, gs.apiToken)
+	gs.logger.Printf("Deleted authentication files\n%s\n%s", gs.apiCreds, gs.apiTok)
 }
