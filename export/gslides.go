@@ -23,9 +23,10 @@ type GSlides struct {
 	gDriveSrv *drive.Service
 	gsSrv     *slides.Service
 	logger    *log.Logger
+	fCreate   bool
 }
 
-func New(credsPath string, logger *log.Logger) *GSlides {
+func New(credsPath string, fCreate bool, logger *log.Logger) *GSlides {
 	apiCreds := fmt.Sprintf("%s/api-creds.json", credsPath)
 	apiTok := fmt.Sprintf("%s/api-token.json", credsPath)
 	gDriveSrv, gsSrv := getClients(apiCreds, apiTok)
@@ -37,6 +38,7 @@ func New(credsPath string, logger *log.Logger) *GSlides {
 		gDriveSrv: gDriveSrv,
 		gsSrv:     gsSrv,
 		logger:    logger,
+		fCreate:   fCreate,
 	}
 
 	return &gs
@@ -144,9 +146,14 @@ func (gs *GSlides) delExisting(slideName string) {
 	} else {
 		for _, i := range r.Files {
 			if i.Name == slideName {
-				gs.gDriveSrv.Files.Delete(i.Id).Do()
+				if gs.fCreate {
+					gs.gDriveSrv.Files.Delete(i.Id).Do()
 
-				gs.logger.Printf("Deleted filename %s (%s)", i.Name, i.Id)
+					gs.logger.Printf("Deleted filename %s (%s)", i.Name, i.Id)
+				} else {
+					log.Printf("Slide %s already exists", i.Name)
+					os.Exit(1)
+				}
 			}
 		}
 	}
@@ -232,7 +239,7 @@ func (gs *GSlides) Export(pivInterval *pivotal.Interval) {
 	gs.createPres(pivInterval)
 }
 
-func (gs *GSlides) DelAuth() {
+func (gs *GSlides) DelTok() {
 	os.Remove(gs.apiCreds)
 	os.Remove(gs.apiTok)
 

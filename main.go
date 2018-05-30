@@ -29,20 +29,21 @@ var (
 )
 
 func main() {
-	delAuth := flag.Bool("d", false, "delete the authentication files being used for pivex")
+	delTok := flag.Bool("d", false, "delete the generated Google API token being used")
 	pivApiTok := flag.String(
 		"p",
 		"",
 		fmt.Sprintf(
 			"the Pivotal API token to be used, this token only needs to specified when the token is set for the first time and will be stored under %s after the first time it is set",
 			credsPath))
+	fCreate := flag.Bool("f", false, "overwrite an existing presentation")
 	flag.Parse()
 
 	piv := pivotal.New(*pivApiTok, credsPath, logger)
-	gs := export.New(credsPath, logger)
+	gs := export.New(credsPath, *fCreate, logger)
 
-	if *delAuth {
-		gs.DelAuth()
+	if *delTok {
+		gs.DelTok()
 
 		os.Exit(0)
 	}
