@@ -17,7 +17,7 @@ var (
 		credsPath = fmt.Sprintf("%s/.pivex", usr.HomeDir)
 
 		if _, err := os.Stat(credsPath); os.IsNotExist(err) {
-			os.Mkdir(credsPath, 0600)
+			os.Mkdir(credsPath, 0700)
 		}
 
 		if err != nil {

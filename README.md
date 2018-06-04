@@ -10,10 +10,10 @@
 - Pivotal API key
 - Google API credentials	
 	Download the `pivex` JSON credentials from [here](https://console.developers.google.com/apis/credentials?project=lco-internal&folder&organizationId=78492096084)
-	and rename it to `pivex-creds.json` then:
+	and rename it to `api-creds.json` then:
 	```
-	mkdir ~/.google-api
-	mv pivex-creds.json ~/.google-api
+	mkdir ~/.pivex
+	mv pivex-creds.json ~/.pivex
 	```
 
 ## Installation

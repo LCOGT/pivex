@@ -26,6 +26,11 @@ type GSlides struct {
 	fCreate   bool
 }
 
+const (
+	softwareTeamDriveId = "0AEiahtpqanW1Uk9PVA"
+	sprintFolder        = "1ScvGIRhj780z_yWzn1ptHovjL-0V9vKK"
+)
+
 func New(credsPath string, fCreate bool, logger *log.Logger) *GSlides {
 	apiCreds := fmt.Sprintf("%s/api-creds.json", credsPath)
 	apiTok := fmt.Sprintf("%s/api-token.json", credsPath)
@@ -134,24 +139,32 @@ func getClients(apiCreds string, apiTok string) (driveSrv *drive.Service, slides
 }
 
 func (gs *GSlides) delExisting(slideName string) {
-	r, err := gs.gDriveSrv.Files.List().PageSize(10).
-		Fields("nextPageToken, files(id, name)").Do()
+	teamDriveFiles, err := gs.gDriveSrv.Files.
+		List().
+		SupportsTeamDrives(true).
+		IncludeTeamDriveItems(true).
+		Corpora("teamDrive").
+		TeamDriveId(softwareTeamDriveId).
+		Do()
 
 	if err != nil {
 		gs.logger.Fatalf("Unable to retrieve files: %v", err)
 	}
 
-	if len(r.Files) == 0 {
+	if len(teamDriveFiles.Files) == 0 {
 		gs.logger.Printf("No files named %s exist", slideName)
 	} else {
-		for _, i := range r.Files {
-			if i.Name == slideName {
+		for _, teamFile := range teamDriveFiles.Files {
+			if teamFile.Name == slideName {
 				if gs.fCreate {
-					gs.gDriveSrv.Files.Delete(i.Id).Do()
+					gs.gDriveSrv.Files.
+						Delete(teamFile.Id).
+						SupportsTeamDrives(true).
+						Do()
 
-					gs.logger.Printf("Deleted filename %s (%s)", i.Name, i.Id)
+					gs.logger.Printf("Deleted filename %s (%s)", teamFile.Name, teamFile.Id)
 				} else {
-					log.Printf("Slide %s already exists", i.Name)
+					gs.logger.Printf("Slide %s already exists", teamFile.Name)
 					os.Exit(1)
 				}
 			}
@@ -212,27 +225,32 @@ func (gs *GSlides) createPres(pivInterval *pivotal.Interval) {
 
 	gs.delExisting(slideName)
 
-	p := &slides.Presentation{
-		Title: slideName,
+	driveFile := &drive.File{
+		MimeType:    "application/vnd.google-apps.presentation",
+		Name:        slideName,
+		TeamDriveId: softwareTeamDriveId,
+		Parents:     []string{sprintFolder},
 	}
-	presentation, err := gs.gsSrv.Presentations.Create(p).Fields(
-		"presentationId",
-	).Do()
+
+	presentation, err := gs.gDriveSrv.Files.Create(driveFile).SupportsTeamDrives(true).Do()
+
 	if err != nil {
-		log.Fatalf("Unable to create presentation. %v", err)
+		gs.logger.Fatalf("Unable to create presentation. %v", err)
 	}
-	fmt.Printf("Created presentation with ID: %s", presentation.PresentationId)
+
+	gs.logger.Printf("Created presentation with ID: %s", driveFile.Id)
 
 	requests := genSlides(&pivInterval.Stories)
 
 	body := &slides.BatchUpdatePresentationRequest{
 		Requests: requests,
 	}
-	response, err := gs.gsSrv.Presentations.BatchUpdate(presentation.PresentationId, body).Do()
+	response, err := gs.gsSrv.Presentations.BatchUpdate(presentation.Id, body).Do()
 	if err != nil {
-		log.Fatalf("Unable to create slide. %v", err)
+		gs.logger.Fatalf("Unable to create slide. %v", err)
 	}
-	fmt.Printf("Created slide with ID: %s", response.Replies[0].CreateSlide.ObjectId)
+
+	gs.logger.Printf("Created slide with ID: %s", response.Replies[0].CreateSlide.ObjectId)
 }
 
 func (gs *GSlides) Export(pivInterval *pivotal.Interval) {
