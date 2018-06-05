@@ -8,6 +8,7 @@
 	export GOPATH="~/go"
 	```
 - Pivotal API key
+	Can be found under a user's [profile settings](https://www.pivotaltracker.com/profile)
 - Google API credentials	
 	Download the `pivex` JSON credentials from [here](https://console.developers.google.com/apis/credentials?project=lco-internal&folder&organizationId=78492096084)
 	and rename it to `api-creds.json` then:
