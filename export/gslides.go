@@ -280,7 +280,7 @@ func (gs *GSlides) genSprintAccomplishments() ([]*slides.Request) {
 }
 
 func (gs *GSlides) createPres() {
-	slideName := "sprint-" + strconv.Itoa(gs.pivIteration.Number)
+	slideName := "Sprint Demo " + strconv.Itoa(gs.pivIteration.Number)
 
 	gs.delExisting(slideName)
 

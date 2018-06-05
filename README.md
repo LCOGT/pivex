@@ -27,5 +27,3 @@ go install
 ```
 pivex
 ```
-
-## Examples
