@@ -178,6 +178,10 @@ func genSlides(stories *[]pivotal.Story) ([]*slides.Request) {
 	requests := make([]*slides.Request, 0)
 
 	for _, story := range *stories {
+		if story.CurrentState != "accepted" {
+			continue
+		}
+
 		titleId := fmt.Sprintf("story-title-%d", story.Id)
 		bodyId := fmt.Sprintf("story-body-%d", story.Id)
 
@@ -266,7 +270,8 @@ func (gs *GSlides) genSprintAccomplishments() ([]*slides.Request) {
 			InsertText: &slides.InsertTextRequest{
 				ObjectId: bodyId,
 				Text: fmt.Sprintf(
-					"Total\nFeatures: %d\tChores: %d\tBugs: %d\nAccepted\nFeatures: %d\tChores: %d\tBugs: %d\n", totalFeatures, totalChores, totalBugs, acceptedFeatures, acceptedChores, acceptedBugs),
+					"Total\nFeatures: %d\tChores: %d\tBugs: %d\nAccepted\nFeatures: %d\tChores: %d\tBugs: %d\n",
+					totalFeatures, totalChores, totalBugs, acceptedFeatures, acceptedChores, acceptedBugs),
 			},
 		},
 	)
@@ -294,7 +299,7 @@ func (gs *GSlides) createPres() {
 
 	requests := gs.genSprintAccomplishments()
 
-	gs.logger.Printf("Created presentation with ID: %s", driveFile.Id)
+	gs.logger.Printf("Created presentation with ID: %s", presentation.Id)
 
 	requests = append(requests, genSlides(&gs.pivIteration.Stories)...)
 
