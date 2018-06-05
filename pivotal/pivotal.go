@@ -12,16 +12,16 @@ import (
 )
 
 type Pivotal struct {
-	credsPath    string
-	pivUrl       string
-	projUrl      string
-	projectId    int
-	apiToken     string
-	Intervals    []Interval
-	logger       *log.Logger
+	credsPath  string
+	pivUrl     string
+	projUrl    string
+	projectId  int
+	apiToken   string
+	Iterations []Iteration
+	logger     *log.Logger
 }
 
-type Interval struct {
+type Iteration struct {
 	Number       int     `json:"number"`
 	ProjectId    int     `json:"project_id"`
 	Length       int     `json:"length"`
@@ -116,7 +116,7 @@ func writeTokenFile(filePath string, apiToken string) {
 	ioutil.WriteFile(filePath, fData, 0600)
 }
 
-func (piv *Pivotal) GetStories() {
+func (piv *Pivotal) GetIterations() {
 	req, err := http.NewRequest("GET", piv.projUrl+"/iterations?scope=current", nil)
 	if err != nil {
 		piv.logger.Fatalf("Error creating request: %s", err)
@@ -134,5 +134,5 @@ func (piv *Pivotal) GetStories() {
 		piv.logger.Fatalf("Error getting Pivotal data: %s", resp.Status)
 	}
 
-	json.NewDecoder(resp.Body).Decode(&piv.Intervals)
+	json.NewDecoder(resp.Body).Decode(&piv.Iterations)
 }

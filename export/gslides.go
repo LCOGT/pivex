@@ -17,13 +17,14 @@ import (
 )
 
 type GSlides struct {
-	credsPath string
-	apiCreds  string
-	apiTok    string
-	gDriveSrv *drive.Service
-	gsSrv     *slides.Service
-	logger    *log.Logger
-	fCreate   bool
+	credsPath    string
+	apiCreds     string
+	apiTok       string
+	gDriveSrv    *drive.Service
+	gsSrv        *slides.Service
+	logger       *log.Logger
+	forceCreate  bool
+	pivIteration pivotal.Iteration
 }
 
 const (
@@ -31,19 +32,20 @@ const (
 	sprintFolder        = "1ScvGIRhj780z_yWzn1ptHovjL-0V9vKK"
 )
 
-func New(credsPath string, fCreate bool, logger *log.Logger) *GSlides {
+func New(credsPath string, forceCreate bool, logger *log.Logger, pivIteration pivotal.Iteration) *GSlides {
 	apiCreds := fmt.Sprintf("%s/api-creds.json", credsPath)
 	apiTok := fmt.Sprintf("%s/api-token.json", credsPath)
 	gDriveSrv, gsSrv := getClients(apiCreds, apiTok)
 
 	gs := GSlides{
-		credsPath: credsPath,
-		apiCreds:  apiCreds,
-		apiTok:    apiTok,
-		gDriveSrv: gDriveSrv,
-		gsSrv:     gsSrv,
-		logger:    logger,
-		fCreate:   fCreate,
+		credsPath:    credsPath,
+		apiCreds:     apiCreds,
+		apiTok:       apiTok,
+		gDriveSrv:    gDriveSrv,
+		gsSrv:        gsSrv,
+		logger:       logger,
+		forceCreate:  forceCreate,
+		pivIteration: pivIteration,
 	}
 
 	return &gs
@@ -156,7 +158,7 @@ func (gs *GSlides) delExisting(slideName string) {
 	} else {
 		for _, teamFile := range teamDriveFiles.Files {
 			if teamFile.Name == slideName {
-				if gs.fCreate {
+				if gs.forceCreate {
 					gs.gDriveSrv.Files.
 						Delete(teamFile.Id).
 						SupportsTeamDrives(true).
@@ -220,8 +222,60 @@ func genSlides(stories *[]pivotal.Story) ([]*slides.Request) {
 	return requests
 }
 
-func (gs *GSlides) createPres(pivInterval *pivotal.Interval) {
-	slideName := "sprint-" + strconv.Itoa(pivInterval.Number)
+func (gs *GSlides) genSprintAccomplishments() ([]*slides.Request) {
+	titleId := "sprint-accomplishments"
+	bodyId := "sprint-accomplishments-body"
+
+	totalFeatures, totalChores, totalBugs := gs.getStoryCounts(func(string) (bool) { return true })
+	acceptedFeatures, acceptedChores, acceptedBugs := gs.getStoryCounts(
+		func(state string) (bool) {
+			return state == "accepted"
+		})
+
+	requests := make([]*slides.Request, 0)
+	requests = append(
+		requests,
+		&slides.Request{
+			CreateSlide: &slides.CreateSlideRequest{
+				SlideLayoutReference: &slides.LayoutReference{
+					PredefinedLayout: "TITLE_AND_BODY",
+				},
+				PlaceholderIdMappings: []*slides.LayoutPlaceholderIdMapping{
+					{
+						LayoutPlaceholder: &slides.Placeholder{
+							Type: "TITLE",
+						},
+						ObjectId: titleId,
+					},
+					{
+						LayoutPlaceholder: &slides.Placeholder{
+							Type: "BODY",
+						},
+						ObjectId: bodyId,
+					},
+				},
+			},
+		},
+		&slides.Request{
+			InsertText: &slides.InsertTextRequest{
+				ObjectId: titleId,
+				Text:     "Sprint accomplishments",
+			},
+		},
+		&slides.Request{
+			InsertText: &slides.InsertTextRequest{
+				ObjectId: bodyId,
+				Text: fmt.Sprintf(
+					"Total\nFeatures: %d\tChores: %d\tBugs: %d\nAccepted\nFeatures: %d\tChores: %d\tBugs: %d\n", totalFeatures, totalChores, totalBugs, acceptedFeatures, acceptedChores, acceptedBugs),
+			},
+		},
+	)
+
+	return requests
+}
+
+func (gs *GSlides) createPres() {
+	slideName := "sprint-" + strconv.Itoa(gs.pivIteration.Number)
 
 	gs.delExisting(slideName)
 
@@ -238,9 +292,11 @@ func (gs *GSlides) createPres(pivInterval *pivotal.Interval) {
 		gs.logger.Fatalf("Unable to create presentation. %v", err)
 	}
 
+	requests := gs.genSprintAccomplishments()
+
 	gs.logger.Printf("Created presentation with ID: %s", driveFile.Id)
 
-	requests := genSlides(&pivInterval.Stories)
+	requests = append(requests, genSlides(&gs.pivIteration.Stories)...)
 
 	body := &slides.BatchUpdatePresentationRequest{
 		Requests: requests,
@@ -253,8 +309,8 @@ func (gs *GSlides) createPres(pivInterval *pivotal.Interval) {
 	gs.logger.Printf("Created slide with ID: %s", response.Replies[0].CreateSlide.ObjectId)
 }
 
-func (gs *GSlides) Export(pivInterval *pivotal.Interval) {
-	gs.createPres(pivInterval)
+func (gs *GSlides) Export() {
+	gs.createPres()
 }
 
 func (gs *GSlides) DelTok() {
@@ -262,4 +318,21 @@ func (gs *GSlides) DelTok() {
 	os.Remove(gs.apiTok)
 
 	gs.logger.Printf("Deleted authentication files\n%s\n%s", gs.apiCreds, gs.apiTok)
+}
+
+func (gs *GSlides) getStoryCounts(constraint func(state string) bool) (featureCount int, choreCount int, bugCount int) {
+	for _, story := range gs.pivIteration.Stories {
+		storyType := story.StoryType
+		storyState := story.CurrentState
+
+		if storyType == "feature" && constraint(storyState) {
+			featureCount++
+		} else if storyType == "chore" && constraint(storyState) {
+			choreCount++
+		} else if storyType == "bug" && constraint(storyState) {
+			bugCount++
+		}
+	}
+
+	return
 }

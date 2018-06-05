@@ -40,7 +40,9 @@ func main() {
 	flag.Parse()
 
 	piv := pivotal.New(*pivApiTok, credsPath, logger)
-	gs := export.New(credsPath, *fCreate, logger)
+	piv.GetIterations()
+
+	gs := export.New(credsPath, *fCreate, logger, piv.Iterations[0])
 
 	if *delTok {
 		gs.DelTok()
@@ -48,7 +50,5 @@ func main() {
 		os.Exit(0)
 	}
 
-	piv.GetStories()
-
-	gs.Export(&piv.Intervals[0])
+	gs.Export()
 }
