@@ -30,16 +30,17 @@ var (
 )
 
 func main() {
-	box := packr.NewBox("./tmp")
+	box := packr.NewBox("./static")
 
-	delTok := flag.Bool("d", false, "delete the generated Google API token being used")
-	pivApiTok := flag.String(
+	delTok := flag.BoolP("delete-google-token", "d", false, "delete the generated Google API token being used")
+	pivApiTok := flag.StringP(
+		"pivotal-token",
 		"p",
 		"",
 		fmt.Sprintf(
 			"the Pivotal API token to be used, this token only needs to specified when the token is set for the first time and will be stored under %s after the first time it is set",
 			credsPath))
-	fCreate := flag.Bool("f", false, "overwrite an existing presentation")
+	fCreate := flag.BoolP("force", "f", false, "overwrite an existing presentation")
 	showVer := flag.BoolP("version", "v", false, "show the current version")
 
 	flag.Parse()
@@ -64,8 +65,4 @@ func main() {
 	}
 
 	gs.Export()
-}
-
-func parseArgs() {
-
 }
