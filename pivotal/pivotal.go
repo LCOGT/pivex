@@ -1,14 +1,15 @@
 package pivotal
 
 import (
-	"net/http"
-	"encoding/json"
-	"strconv"
-	"log"
-	"os"
-	"fmt"
 	"bufio"
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"log"
+	"net/http"
+	"os"
+	"pivex/pivotal/story"
+	"strconv"
 )
 
 type Pivotal struct {
@@ -22,41 +23,14 @@ type Pivotal struct {
 }
 
 type Iteration struct {
-	Number       int     `json:"number"`
-	ProjectId    int     `json:"project_id"`
-	Length       int     `json:"length"`
-	TeamStrength int     `json:"team_strength"`
-	Stories      []Story `json:"stories"`
-	Start        string  `json:"start"`
-	Finish       string  `json:"finish"`
-	Kind         string  `json:"kind"`
-}
-
-type Story struct {
-	Kind          string  `json:"kind"`
-	Id            int     `json:"id"`
-	CreatedAt     string  `json:"created_at"`
-	UpdatedAt     string  `json:"updated_at"`
-	Estimate      int     `json:"estimate"`
-	StoryType     string  `json:"story_type"`
-	Name          string  `json:"name"`
-	Description   string  `json:"description"`
-	CurrentState  string  `json:"current_state"`
-	RequestedById int     `json:"requested_by_id"`
-	Url           string  `json:"url"`
-	ProjectId     int     `json:"project_id"`
-	OwnerIds      []int   `json:"owner_ids"`
-	Labels        []Label `json:"labels"`
-	OwnedById     int     `json:"owned_by_id"`
-}
-
-type Label struct {
-	Id        int    `json:"id"`
-	ProjectId int    `json:"project_id"`
-	Kind      string `json:"kind"`
-	Name      string `json:"name"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
+	Number       int           `json:"number"`
+	ProjectId    int           `json:"project_id"`
+	Length       int           `json:"length"`
+	TeamStrength int           `json:"team_strength"`
+	Stories      []story.Story `json:"stories"`
+	Start        string        `json:"start"`
+	Finish       string        `json:"finish"`
+	Kind         string        `json:"kind"`
 }
 
 var client = http.Client{
@@ -135,4 +109,8 @@ func (piv *Pivotal) GetIterations() {
 	}
 
 	json.NewDecoder(resp.Body).Decode(&piv.Iterations)
+}
+
+func (piv *Pivotal) GetStories() {
+
 }

@@ -3,16 +3,17 @@ package export
 import (
 	"encoding/json"
 	"fmt"
+	"golang.org/x/net/context"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/drive/v3"
+	"google.golang.org/api/slides/v1"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"golang.org/x/net/context"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
-	"google.golang.org/api/slides/v1"
 	"pivex/pivotal"
-	"google.golang.org/api/drive/v3"
+	"pivex/pivotal/story"
 	"strconv"
 )
 
@@ -174,16 +175,111 @@ func (gs *GSlides) delExisting(slideName string) {
 	}
 }
 
-func genSlides(stories *[]pivotal.Story) ([]*slides.Request) {
+func genAccomplishments(stories *[]story.Story) ([]*slides.Request) {
 	requests := make([]*slides.Request, 0)
 
-	for _, story := range *stories {
-		if story.CurrentState != "accepted" {
+	for _, i := range *stories {
+		state := story.State(i.CurrentState)
+
+		if state == story.ACCEPTED || state == story.DELIVERED || state == story.FINISHED {
+			titleId := fmt.Sprintf("story-title-%d", i.Id)
+			bodyId := fmt.Sprintf("story-body-%d", i.Id)
+
+			requests = append(
+				requests,
+				&slides.Request{
+					CreateSlide: &slides.CreateSlideRequest{
+						SlideLayoutReference: &slides.LayoutReference{
+							PredefinedLayout: "TITLE_AND_BODY",
+						},
+						PlaceholderIdMappings: []*slides.LayoutPlaceholderIdMapping{
+							{
+								LayoutPlaceholder: &slides.Placeholder{
+									Type: "TITLE",
+								},
+								ObjectId: titleId,
+							},
+							{
+								LayoutPlaceholder: &slides.Placeholder{
+									Type: "BODY",
+								},
+								ObjectId: bodyId,
+							},
+						},
+					},
+				},
+				&slides.Request{
+					InsertText: &slides.InsertTextRequest{
+						ObjectId: titleId,
+						Text:     i.Name,
+					},
+				},
+				&slides.Request{
+					InsertText: &slides.InsertTextRequest{
+						ObjectId: bodyId,
+						Text:     i.Description,
+					},
+				},
+			)
+
+		} else {
 			continue
 		}
+	}
 
-		titleId := fmt.Sprintf("story-title-%d", story.Id)
-		bodyId := fmt.Sprintf("story-body-%d", story.Id)
+	return requests
+}
+
+func genShortfalls(stories *[]story.Story) ([]*slides.Request) {
+	titleId := "sprint-shortfalls"
+	bodyId := "sprint-shortfalls-body"
+
+	shortfalls := make([]story.Story, 0)
+
+	for _, i := range *stories {
+		state := story.State(i.CurrentState)
+
+		if state != story.ACCEPTED && state != story.DELIVERED && state != story.FINISHED {
+			shortfalls = append(shortfalls, i)
+		}
+	}
+
+	requests := make([] *slides.Request, 0)
+
+	requests = append(
+		requests,
+		&slides.Request{
+			CreateSlide: &slides.CreateSlideRequest{
+				SlideLayoutReference: &slides.LayoutReference{
+					PredefinedLayout: "TITLE_AND_BODY",
+				},
+				PlaceholderIdMappings: []*slides.LayoutPlaceholderIdMapping{
+					{
+						LayoutPlaceholder: &slides.Placeholder{
+							Type: "TITLE",
+						},
+						ObjectId: titleId,
+					},
+					{
+						LayoutPlaceholder: &slides.Placeholder{
+							Type: "BODY",
+						},
+						ObjectId: bodyId,
+					},
+				},
+			},
+		},
+		&slides.Request{
+			InsertText: &slides.InsertTextRequest{
+				ObjectId: titleId,
+				Text:     "Sprint shortfalls",
+			},
+		},
+	)
+
+	for _, i := range shortfalls {
+		titleId := fmt.Sprintf("story-title-%d", i.Id)
+		bodyId := fmt.Sprintf("story-body-%d", i.Id)
 
 		requests = append(
 			requests,
@@ -211,13 +307,13 @@ func genSlides(stories *[]pivotal.Story) ([]*slides.Request) {
 			&slides.Request{
 				InsertText: &slides.InsertTextRequest{
 					ObjectId: titleId,
-					Text:     story.Name,
+					Text:     i.Name,
 				},
 			},
 			&slides.Request{
 				InsertText: &slides.InsertTextRequest{
 					ObjectId: bodyId,
-					Text:     story.Description,
+					Text:     i.Description,
 				},
 			},
 		)
@@ -226,15 +322,21 @@ func genSlides(stories *[]pivotal.Story) ([]*slides.Request) {
 	return requests
 }
 
-func (gs *GSlides) genSprintAccomplishments() ([]*slides.Request) {
+func (gs *GSlides) genSprintAccomplishments(stories *[]story.Story) ([]*slides.Request) {
 	titleId := "sprint-accomplishments"
 	bodyId := "sprint-accomplishments-body"
 
-	totalFeatures, totalChores, totalBugs := gs.getStoryCounts(func(string) (bool) { return true })
-	acceptedFeatures, acceptedChores, acceptedBugs := gs.getStoryCounts(
-		func(state string) (bool) {
-			return state == "accepted"
-		})
+	accomplishments := make([]*story.Story, 0)
+
+	for _, i := range *stories {
+		state := story.State(i.CurrentState)
+
+		if state == story.ACCEPTED || state == story.DELIVERED || state == story.FINISHED {
+			accomplishments = append(accomplishments, &i)
+		}
+	}
+
+	totalFeatures, totalChores, totalBugs := gs.getStoryCounts(accomplishments)
 
 	requests := make([]*slides.Request, 0)
 	requests = append(
@@ -270,8 +372,8 @@ func (gs *GSlides) genSprintAccomplishments() ([]*slides.Request) {
 			InsertText: &slides.InsertTextRequest{
 				ObjectId: bodyId,
 				Text: fmt.Sprintf(
-					"Total\nFeatures: %d\tChores: %d\tBugs: %d\nAccepted\nFeatures: %d\tChores: %d\tBugs: %d\n",
-					totalFeatures, totalChores, totalBugs, acceptedFeatures, acceptedChores, acceptedBugs),
+					"Total\nFeatures: %d\tChores: %d\tBugs: %d",
+					totalFeatures, totalChores, totalBugs),
 			},
 		},
 	)
@@ -297,11 +399,13 @@ func (gs *GSlides) createPres() {
 		gs.logger.Fatalf("Unable to create presentation. %v", err)
 	}
 
-	requests := gs.genSprintAccomplishments()
-
 	gs.logger.Printf("Created presentation with ID: %s", presentation.Id)
 
-	requests = append(requests, genSlides(&gs.pivIteration.Stories)...)
+	requests := make([]*slides.Request, 0)
+
+	requests = append(requests, genAccomplishments(&gs.pivIteration.Stories)...)
+
+	requests = append(requests, genShortfalls(&gs.pivIteration.Stories)...)
 
 	body := &slides.BatchUpdatePresentationRequest{
 		Requests: requests,
@@ -325,16 +429,15 @@ func (gs *GSlides) DelTok() {
 	gs.logger.Printf("Deleted authentication files\n%s\n%s", gs.apiCreds, gs.apiTok)
 }
 
-func (gs *GSlides) getStoryCounts(constraint func(state string) bool) (featureCount int, choreCount int, bugCount int) {
-	for _, story := range gs.pivIteration.Stories {
-		storyType := story.StoryType
-		storyState := story.CurrentState
+func (gs *GSlides) getStoryCounts(stories []*story.Story) (featureCount int, choreCount int, bugCount int) {
+	for _, i := range stories {
+		storyType := i.StoryType
 
-		if storyType == "feature" && constraint(storyState) {
+		if storyType == "feature" {
 			featureCount++
-		} else if storyType == "chore" && constraint(storyState) {
+		} else if storyType == "chore" {
 			choreCount++
-		} else if storyType == "bug" && constraint(storyState) {
+		} else if storyType == "bug" {
 			bugCount++
 		}
 	}

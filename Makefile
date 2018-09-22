@@ -6,6 +6,7 @@ build:
 	packr build
 
 version:
+	rm -rf ${STATIC}
 	mkdir ${STATIC}
 	git describe > static/version
 
