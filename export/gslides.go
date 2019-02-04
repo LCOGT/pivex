@@ -15,14 +15,17 @@ import (
 	"pivex/pivotal"
 	"pivex/pivotal/story"
 	"strconv"
+	"strings"
 )
 
 type GSlides struct {
+	presName     string
 	credsPath    string
 	apiCreds     string
 	apiTok       string
 	gDriveSrv    *drive.Service
 	gsSrv        *slides.Service
+	groupEpic  bool
 	logger       *log.Logger
 	forceCreate  bool
 	pivIteration pivotal.Iteration
@@ -33,17 +36,19 @@ const (
 	sprintFolder        = "1ScvGIRhj780z_yWzn1ptHovjL-0V9vKK"
 )
 
-func New(credsPath string, forceCreate bool, logger *log.Logger, pivIteration pivotal.Iteration) *GSlides {
+func New(presName string, credsPath string, forceCreate bool, groupEpic bool, logger *log.Logger, pivIteration pivotal.Iteration) *GSlides {
 	apiCreds := fmt.Sprintf("%s/api-creds.json", credsPath)
 	apiTok := fmt.Sprintf("%s/api-token.json", credsPath)
 	gDriveSrv, gsSrv := getClients(apiCreds, apiTok)
 
 	gs := GSlides{
+		presName:     presName,
 		credsPath:    credsPath,
 		apiCreds:     apiCreds,
 		apiTok:       apiTok,
 		gDriveSrv:    gDriveSrv,
 		gsSrv:        gsSrv,
+		groupEpic:    groupEpic,
 		logger:       logger,
 		forceCreate:  forceCreate,
 		pivIteration: pivIteration,
@@ -182,6 +187,72 @@ func genAccomplishments(stories *[]story.Story) ([]*slides.Request) {
 		state := story.State(i.CurrentState)
 
 		if state == story.ACCEPTED || state == story.DELIVERED || state == story.FINISHED {
+			titleId := fmt.Sprintf("story-title-%d", i.Id)
+			bodyId := fmt.Sprintf("story-body-%d", i.Id)
+
+			requests = append(
+				requests,
+				&slides.Request{
+					CreateSlide: &slides.CreateSlideRequest{
+						SlideLayoutReference: &slides.LayoutReference{
+							PredefinedLayout: "TITLE_AND_BODY",
+						},
+						PlaceholderIdMappings: []*slides.LayoutPlaceholderIdMapping{
+							{
+								LayoutPlaceholder: &slides.Placeholder{
+									Type: "TITLE",
+								},
+								ObjectId: titleId,
+							},
+							{
+								LayoutPlaceholder: &slides.Placeholder{
+									Type: "BODY",
+								},
+								ObjectId: bodyId,
+							},
+						},
+					},
+				},
+				&slides.Request{
+					InsertText: &slides.InsertTextRequest{
+						ObjectId: titleId,
+						Text:     i.Name,
+					},
+				},
+				&slides.Request{
+					InsertText: &slides.InsertTextRequest{
+						ObjectId: bodyId,
+						Text:     i.Description,
+					},
+				},
+			)
+
+		} else {
+			continue
+		}
+	}
+
+	return requests
+}
+
+func genGrouped(stories *[]story.Story) ([]*slides.Request) {
+	requests := make([]*slides.Request, 0)
+	groups := make(map[string]strings.Builder)
+
+	for _, i := range *stories {
+		state := story.State(i.CurrentState)
+
+		if state == story.ACCEPTED || state == story.DELIVERED || state == story.FINISHED {
+			if val, ok := groups[i.Name]; ok {
+				val.WriteString(i.Name)
+				val.WriteString("\n")
+			} else {
+
+			}
+
+
+
+
 			titleId := fmt.Sprintf("story-title-%d", i.Id)
 			bodyId := fmt.Sprintf("story-body-%d", i.Id)
 
@@ -382,13 +453,17 @@ func (gs *GSlides) genSprintAccomplishments(stories *[]story.Story) ([]*slides.R
 }
 
 func (gs *GSlides) createPres() {
-	slideName := "Sprint Demo " + strconv.Itoa(gs.pivIteration.Number)
+	presName := gs.presName
 
-	gs.delExisting(slideName)
+	if gs.presName == "" {
+		presName = "Sprint Demo " + strconv.Itoa(gs.pivIteration.Number)
+	}
+
+	gs.delExisting(presName)
 
 	driveFile := &drive.File{
 		MimeType:    "application/vnd.google-apps.presentation",
-		Name:        slideName,
+		Name:        presName,
 		TeamDriveId: softwareTeamDriveId,
 		Parents:     []string{sprintFolder},
 	}

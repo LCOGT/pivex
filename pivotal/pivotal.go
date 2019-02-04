@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"pivex/pivotal/epic"
 	"pivex/pivotal/story"
 	"strconv"
 )
@@ -20,6 +21,7 @@ type Pivotal struct {
 	apiToken   string
 	Iterations []Iteration
 	logger     *log.Logger
+	Header     epic.Header
 }
 
 type Iteration struct {
@@ -90,6 +92,31 @@ func writeTokenFile(filePath string, apiToken string) {
 	ioutil.WriteFile(filePath, fData, 0600)
 }
 
+func (piv *Pivotal) pivReq(endpoint string, paramString string, v interface{}) {
+	req, err := http.NewRequest("GET", piv.projUrl+"/"+endpoint+"?"+paramString, nil)
+	if err != nil {
+		piv.logger.Fatalf("Error creating request: %s", err)
+	}
+
+	req.Header.Set("X-TrackerToken", piv.apiToken)
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		piv.logger.Fatalf("Error sending request: %s", err)
+	}
+
+	if resp.StatusCode != 200 {
+		piv.logger.Fatalf("Error getting Pivotal data: %s", resp.Status)
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(v)
+
+	if err != nil {
+		piv.logger.Fatalf("Error decoding response: %s", err)
+	}
+}
+
 func (piv *Pivotal) GetIterations() {
 	req, err := http.NewRequest("GET", piv.projUrl+"/iterations?scope=current", nil)
 	if err != nil {
@@ -109,6 +136,10 @@ func (piv *Pivotal) GetIterations() {
 	}
 
 	json.NewDecoder(resp.Body).Decode(&piv.Iterations)
+}
+
+func (piv *Pivotal) GetEpics() {
+	piv.pivReq("epics", "", &piv.Header)
 }
 
 func (piv *Pivotal) GetStories() {

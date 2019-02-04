@@ -41,14 +41,17 @@ func main() {
 			"the Pivotal API token to be used, this token only needs to specified when the token is set for the first time and will be stored under %s after the first time it is set",
 			credsPath))
 	fCreate := flag.BoolP("force", "f", false, "overwrite an existing presentation")
+	presName := flag.StringP("name", "n", "", "name of the presentation (default \"Sprint Demo [SPRINT NUMBER]\")")
 	showVer := flag.BoolP("version", "v", false, "show the current version")
+	groupEpic := flag.BoolP("group-epic", "e", false, "group sprint stories by epic on the same slide")
 
 	flag.Parse()
 
 	piv := pivotal.New(*pivApiTok, credsPath, logger)
 	piv.GetIterations()
+	//piv.GetEpics()
 
-	gs := export.New(credsPath, *fCreate, logger, piv.Iterations[0])
+	gs := export.New(*presName, credsPath, *fCreate, *groupEpic, logger, piv.Iterations[0])
 
 	if *delTok {
 		gs.DelTok()

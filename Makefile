@@ -8,7 +8,7 @@ build:
 version:
 	rm -rf ${STATIC}
 	mkdir ${STATIC}
-	git describe > static/version
+	git describe --dirty > static/version
 
 clean:
 	rm -rf ${STATIC}
