@@ -1,13 +1,14 @@
 package main
 
 import (
-	"pivex/pivotal"
-	"pivex/export"
-	"flag"
 	"fmt"
-	"os"
+	"github.com/gobuffalo/packr"
+	flag "github.com/spf13/pflag"
 	"log"
+	"os"
 	"os/user"
+	"pivex/export"
+	"pivex/pivotal"
 )
 
 var (
@@ -29,14 +30,19 @@ var (
 )
 
 func main() {
-	delTok := flag.Bool("d", false, "delete the generated Google API token being used")
-	pivApiTok := flag.String(
+	box := packr.NewBox("./static")
+
+	delTok := flag.BoolP("delete-google-token", "d", false, "delete the generated Google API token being used")
+	pivApiTok := flag.StringP(
+		"pivotal-token",
 		"p",
 		"",
 		fmt.Sprintf(
 			"the Pivotal API token to be used, this token only needs to specified when the token is set for the first time and will be stored under %s after the first time it is set",
 			credsPath))
-	fCreate := flag.Bool("f", false, "overwrite an existing presentation")
+	fCreate := flag.BoolP("force", "f", false, "overwrite an existing presentation")
+	showVer := flag.BoolP("version", "v", false, "show the current version")
+
 	flag.Parse()
 
 	piv := pivotal.New(*pivApiTok, credsPath, logger)
@@ -46,6 +52,14 @@ func main() {
 
 	if *delTok {
 		gs.DelTok()
+
+		os.Exit(0)
+	}
+
+	if *showVer {
+		ver := box.String("version")
+
+		print("Version: " + ver)
 
 		os.Exit(0)
 	}
