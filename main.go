@@ -4,57 +4,56 @@ import (
 	"fmt"
 	"github.com/gobuffalo/packr"
 	flag "github.com/spf13/pflag"
+	"io/ioutil"
 	"log"
 	"os"
-	"os/user"
+	"pivex/credentials"
 	"pivex/export"
 	"pivex/pivotal"
 )
 
 var (
-	logger    = log.New(os.Stdout, "logger: ", log.Lshortfile)
-	credsPath = func() (credsPath string) {
-		usr, err := user.Current()
-		credsPath = fmt.Sprintf("%s/.pivex", usr.HomeDir)
-
-		if _, err := os.Stat(credsPath); os.IsNotExist(err) {
-			os.Mkdir(credsPath, 0700)
-		}
-
-		if err != nil {
-			logger.Fatal(err)
-		}
-
-		return
-	}()
+	logger = log.New(os.Stdout, "logger: ", log.Lshortfile)
 )
 
 func main() {
 	box := packr.NewBox("./static")
 
-	delTok := flag.BoolP("delete-google-token", "d", false, "delete the generated Google API token being used")
-	pivApiTok := flag.StringP(
-		"pivotal-token",
+	pivCreds := credentials.NewPivotal(logger)
+	pivApiToken := flag.StringP(
+		"pivotal-api-token",
 		"p",
 		"",
 		fmt.Sprintf(
-			"the Pivotal API token to be used, this token only needs to specified when the token is set for the first time and will be stored under %s after the first time it is set",
-			credsPath))
+			"exports the given Pivotal API token, this token will be stored under %s and overwrite any existing token",
+			pivCreds.Path))
+
+	gSlideCreds := credentials.NewGoogleSlides(logger)
+	oauthClientIdFile := flag.StringP(
+		"google-token",
+		"g",
+		"exports the given Google API token JSON, this token will be stored under %s and overwrite any existing token",
+		fmt.Sprintf("the file containing the Google API token JSON",
+			gSlideCreds.Path))
+	print(oauthClientIdFile)
+
 	fCreate := flag.BoolP("force", "f", false, "overwrite an existing presentation")
 	showVer := flag.BoolP("version", "v", false, "show the current version")
 
 	flag.Parse()
 
-	piv := pivotal.New(*pivApiTok, credsPath, logger)
+	pivCreds.ApiToken = *pivApiToken
+
+	pivCredsErr := pivCreds.Init()
+
+	if pivCredsErr != nil {
+		logger.Panicln(pivCredsErr)
+	}
+
+	piv := pivotal.New(pivCreds, logger)
 	piv.GetIterations()
 
-	gs := export.New(credsPath, *fCreate, logger, piv.Iterations[0])
-
-	if *delTok {
-		gs.DelTok()
-
-		os.Exit(0)
-	}
+	gs := export.New(gSlideCreds, *fCreate, logger, piv.Iterations[0])
 
 	if *showVer {
 		ver := box.String("version")
@@ -65,4 +64,19 @@ func main() {
 	}
 
 	gs.Export()
+}
+
+func copyFile(sourceFile string, destinationFile string) {
+	input, err := ioutil.ReadFile(sourceFile)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = ioutil.WriteFile(destinationFile, input, 0644)
+	if err != nil {
+		fmt.Println("Error creating", destinationFile)
+		fmt.Println(err)
+		return
+	}
 }

@@ -3,23 +3,22 @@ package export
 import (
 	"encoding/json"
 	"fmt"
+	"golang.org/x/net/context"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/drive/v3"
+	"google.golang.org/api/slides/v1"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"golang.org/x/net/context"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
-	"google.golang.org/api/slides/v1"
+	"pivex/credentials"
 	"pivex/pivotal"
-	"google.golang.org/api/drive/v3"
 	"strconv"
 )
 
 type GSlides struct {
-	credsPath    string
-	apiCreds     string
-	apiTok       string
+	creds        *credentials.GoogleSlides
 	gDriveSrv    *drive.Service
 	gsSrv        *slides.Service
 	logger       *log.Logger
@@ -32,15 +31,13 @@ const (
 	sprintFolder        = "1ScvGIRhj780z_yWzn1ptHovjL-0V9vKK"
 )
 
-func New(credsPath string, forceCreate bool, logger *log.Logger, pivIteration pivotal.Iteration) *GSlides {
-	apiCreds := fmt.Sprintf("%s/api-creds.json", credsPath)
-	apiTok := fmt.Sprintf("%s/api-token.json", credsPath)
+func New(creds *credentials.GoogleSlides, forceCreate bool, logger *log.Logger, pivIteration pivotal.Iteration) *GSlides {
+	apiCreds := fmt.Sprintf("%s/google-slides-oauth-2.0.json", creds.Path)
+	apiTok := fmt.Sprintf("%s/google-slides-oauth-2.0-token.json", creds.Path)
 	gDriveSrv, gsSrv := getClients(apiCreds, apiTok)
 
 	gs := GSlides{
-		credsPath:    credsPath,
-		apiCreds:     apiCreds,
-		apiTok:       apiTok,
+		creds:        creds,
 		gDriveSrv:    gDriveSrv,
 		gsSrv:        gsSrv,
 		logger:       logger,
@@ -316,13 +313,6 @@ func (gs *GSlides) createPres() {
 
 func (gs *GSlides) Export() {
 	gs.createPres()
-}
-
-func (gs *GSlides) DelTok() {
-	os.Remove(gs.apiCreds)
-	os.Remove(gs.apiTok)
-
-	gs.logger.Printf("Deleted authentication files\n%s\n%s", gs.apiCreds, gs.apiTok)
 }
 
 func (gs *GSlides) getStoryCounts(constraint func(state string) bool) (featureCount int, choreCount int, bugCount int) {

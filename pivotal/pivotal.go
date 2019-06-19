@@ -1,18 +1,14 @@
 package pivotal
 
 import (
-	"net/http"
 	"encoding/json"
-	"strconv"
 	"log"
-	"os"
-	"fmt"
-	"bufio"
-	"io/ioutil"
+	"net/http"
+	"pivex/credentials"
+	"strconv"
 )
 
 type Pivotal struct {
-	credsPath  string
 	pivUrl     string
 	projUrl    string
 	projectId  int
@@ -68,52 +64,17 @@ const (
 	projectId = 1314272
 )
 
-// TODO: See if Go has something like kwargs, doesn't look like New functions can be overloaded
-func New(apiToken string, credsPath string, logger *log.Logger) *Pivotal {
-	apiTokenFile := fmt.Sprintf("%s/pivotal-token", credsPath)
-
-	if apiToken == "" {
-		apiToken = readTokenFile(apiTokenFile)
-	} else {
-		writeTokenFile(apiTokenFile, apiToken)
-	}
+func New(creds *credentials.Pivotal, logger *log.Logger) *Pivotal {
 
 	piv := Pivotal{
-		credsPath: credsPath,
+		apiToken:  creds.ApiToken,
 		pivUrl:    pivUrl,
 		projUrl:   pivUrl + "/" + strconv.Itoa(projectId),
 		projectId: projectId,
-		apiToken:  apiToken,
 		logger:    logger,
 	}
 
 	return &piv
-}
-
-func readTokenFile(filePath string) (apiToken string) {
-	f, err := os.Open(filePath)
-	defer f.Close()
-
-	if err != nil {
-		log.Fatalf("Unable to read token file %s: %v", filePath, err)
-	}
-
-	scanner := bufio.NewScanner(f)
-	// TODO: Only reads one line
-	for scanner.Scan() {
-		apiToken = scanner.Text()
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
-
-	return
-}
-
-func writeTokenFile(filePath string, apiToken string) {
-	fData := []byte(apiToken + "\n")
-	ioutil.WriteFile(filePath, fData, 0600)
 }
 
 func (piv *Pivotal) GetIterations() {

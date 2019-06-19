@@ -6,7 +6,7 @@ build:
 	packr build
 
 version:
-	mkdir ${STATIC}
+	[[ -d ${STATIC} ]] || mkdir ${STATIC}
 	git describe > static/version
 
 clean:
