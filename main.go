@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/gobuffalo/packr"
 	flag "github.com/spf13/pflag"
-	"io/ioutil"
 	"log"
 	"os"
 	"pivex/credentials"
@@ -32,8 +31,8 @@ func main() {
 	oauthClientIdFile := flag.StringP(
 		"google-token",
 		"g",
-		"exports the given Google API token JSON, this token will be stored under %s and overwrite any existing token",
-		fmt.Sprintf("the file containing the Google API token JSON",
+		"",
+		fmt.Sprintf("exports the given Google API token JSON, this token will be stored under %s and overwrite any existing token",
 			gSlideCreds.Path))
 	print(oauthClientIdFile)
 
@@ -41,6 +40,14 @@ func main() {
 	showVer := flag.BoolP("version", "v", false, "show the current version")
 
 	flag.Parse()
+
+	if *showVer {
+		ver := box.String("version")
+
+		print("Version: " + ver)
+
+		os.Exit(0)
+	}
 
 	pivCreds.ApiToken = *pivApiToken
 
@@ -53,30 +60,21 @@ func main() {
 	piv := pivotal.New(pivCreds, logger)
 	piv.GetIterations()
 
+	if *oauthClientIdFile != "" {
+		err := gSlideCreds.CopyOauth2ClientIdFile(*oauthClientIdFile)
+
+		if err != nil {
+			logger.Panicln(err)
+		}
+	}
+
+	gSlideCredsErr := gSlideCreds.Init()
+
+	if gSlideCredsErr != nil {
+		logger.Panicln(gSlideCredsErr)
+	}
+
 	gs := export.New(gSlideCreds, *fCreate, logger, piv.Iterations[0])
 
-	if *showVer {
-		ver := box.String("version")
-
-		print("Version: " + ver)
-
-		os.Exit(0)
-	}
-
 	gs.Export()
-}
-
-func copyFile(sourceFile string, destinationFile string) {
-	input, err := ioutil.ReadFile(sourceFile)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	err = ioutil.WriteFile(destinationFile, input, 0644)
-	if err != nil {
-		fmt.Println("Error creating", destinationFile)
-		fmt.Println(err)
-		return
-	}
 }
