@@ -2,9 +2,9 @@ package pivotal
 
 import (
 	"encoding/json"
+	"github.com/LCOGT/pivex/credentials"
 	"log"
 	"net/http"
-	"pivex/credentials"
 	"strconv"
 )
 

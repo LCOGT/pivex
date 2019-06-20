@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
+	"github.com/LCOGT/pivex/credentials"
+	"github.com/LCOGT/pivex/export"
+	"github.com/LCOGT/pivex/pivotal"
 	"github.com/gobuffalo/packr"
 	flag "github.com/spf13/pflag"
 	"log"
 	"os"
-	"pivex/credentials"
-	"pivex/export"
-	"pivex/pivotal"
 )
 
 var (

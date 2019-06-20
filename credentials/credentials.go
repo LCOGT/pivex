@@ -7,7 +7,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"os/user"
+	"runtime"
 )
 
 var (
@@ -75,6 +77,26 @@ func readFile(filePath string) (apiToken string) {
 	}
 
 	return
+}
+
+func openBrowser(url string) {
+	var err error
+
+	switch runtime.GOOS {
+	case "linux":
+		err = exec.Command("xdg-open", url).Start()
+	case "windows":
+		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	case "darwin":
+		err = exec.Command("open", url).Start()
+	default:
+		err = fmt.Errorf("unsupported platform")
+	}
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 }
 
 func copyFile(sourceFile string, destinationFile string) error {

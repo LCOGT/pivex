@@ -2,13 +2,13 @@ package export
 
 import (
 	"fmt"
+	"github.com/LCOGT/pivex/credentials"
+	"github.com/LCOGT/pivex/pivotal"
 	"golang.org/x/net/context"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/slides/v1"
 	"log"
 	"os"
-	"pivex/credentials"
-	"pivex/pivotal"
 	"strconv"
 )
 

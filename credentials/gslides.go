@@ -79,11 +79,9 @@ func (gs *GoogleSlides) getTokenFromFile() (*oauth2.Token, error) {
 }
 
 func (gs *GoogleSlides) generateToken() (*oauth2.Token, error) {
-	authURL := gs.Oauth2Config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
-	fmt.Printf(
-		"Go to the following link in your browser and copy the authorization code, then paste it in the line "+
-			"below\n%v\nAuthorization code: ",
-		authURL)
+	authUrl := gs.Oauth2Config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
+
+	openBrowser(authUrl)
 
 	var authCode string
 	if _, err := fmt.Scan(&authCode); err != nil {
