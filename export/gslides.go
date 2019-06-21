@@ -21,16 +21,21 @@ type GSlides struct {
 	pivIteration pivotal.Iteration
 }
 
+type Opts struct {
+	ForceCreate bool
+	DeckName    string
+}
+
 const (
 	softwareTeamDriveId = "0AEiahtpqanW1Uk9PVA"
 	sprintFolder        = "1ScvGIRhj780z_yWzn1ptHovjL-0V9vKK"
 )
 
-func New(creds *credentials.GoogleSlides, forceCreate bool, logger *log.Logger, pivIteration pivotal.Iteration) *GSlides {
+func New(creds *credentials.GoogleSlides, opts *Opts, logger *log.Logger, pivIteration pivotal.Iteration) *GSlides {
 	gs := GSlides{
 		creds:        creds,
 		logger:       logger,
-		forceCreate:  forceCreate,
+		forceCreate:  opts.ForceCreate,
 		pivIteration: pivIteration,
 	}
 

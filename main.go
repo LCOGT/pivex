@@ -9,6 +9,7 @@ import (
 	flag "github.com/spf13/pflag"
 	"log"
 	"os"
+	"strconv"
 )
 
 var (
@@ -78,7 +79,16 @@ func main() {
 		logger.Panicln(gSlideCredsErr)
 	}
 
-	gs := export.New(gSlideCreds, *fCreate, logger, piv.Iterations[0])
+	gsOpts := export.Opts{
+		ForceCreate: *fCreate,
+		DeckName: getDefaultDeckName(piv.Iterations[0].Number),
+	}
+
+	gs := export.New(gSlideCreds, &gsOpts, logger, piv.Iterations[0])
 
 	gs.Export()
+}
+
+func getDefaultDeckName(sprint int) string {
+	return fmt.Sprintf("Sprint Demo %s",strconv.Itoa(sprint))
 }
