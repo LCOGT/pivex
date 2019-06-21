@@ -5,7 +5,7 @@ import (
 	"github.com/LCOGT/pivex/credentials"
 	"github.com/LCOGT/pivex/export"
 	"github.com/LCOGT/pivex/pivotal"
-	"github.com/gobuffalo/packr"
+	"github.com/gobuffalo/packr/v2"
 	flag "github.com/spf13/pflag"
 	"log"
 	"os"
@@ -16,7 +16,7 @@ var (
 )
 
 func main() {
-	box := packr.NewBox("./static")
+	box := packr.New("version", "./static")
 
 	pivCreds := credentials.NewPivotal(logger)
 	pivApiToken := flag.StringP(
@@ -42,7 +42,11 @@ func main() {
 	flag.Parse()
 
 	if *showVer {
-		ver := box.String("version")
+		ver, err := box.FindString("version")
+
+		if err != nil {
+			print("Error getting version")
+		}
 
 		print("Version: " + ver)
 

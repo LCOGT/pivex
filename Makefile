@@ -3,7 +3,8 @@ STATIC := static
 all: version build clean
 
 build:
-	packr build
+	packr2
+	go build
 
 version:
 	[[ -d ${STATIC} ]] || mkdir ${STATIC}
@@ -11,3 +12,4 @@ version:
 
 clean:
 	rm -rf ${STATIC}
+	packr2 clean
