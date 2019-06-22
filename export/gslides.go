@@ -9,7 +9,6 @@ import (
 	"google.golang.org/api/slides/v1"
 	"log"
 	"os"
-	"strconv"
 )
 
 type GSlides struct {
@@ -17,7 +16,7 @@ type GSlides struct {
 	gDriveSvc    *drive.Service
 	gSlidesSvc   *slides.Service
 	logger       *log.Logger
-	forceCreate  bool
+	opts         *Opts
 	pivIteration pivotal.Iteration
 }
 
@@ -35,12 +34,11 @@ func New(creds *credentials.GoogleSlides, opts *Opts, logger *log.Logger, pivIte
 	gs := GSlides{
 		creds:        creds,
 		logger:       logger,
-		forceCreate:  opts.ForceCreate,
+		opts:         opts,
 		pivIteration: pivIteration,
 	}
 
 	gs.initClients()
-	gs.delExisting("tmp")
 
 	return &gs
 }
@@ -83,7 +81,7 @@ func (gs *GSlides) delExisting(slideName string) {
 	} else {
 		for _, teamFile := range teamDriveFiles.Files {
 			if teamFile.Name == slideName {
-				if gs.forceCreate {
+				if gs.opts.ForceCreate {
 					gs.gDriveSvc.Files.
 						Delete(teamFile.Id).
 						SupportsTeamDrives(true).
@@ -205,13 +203,11 @@ func (gs *GSlides) genSprintAccomplishments() ([]*slides.Request) {
 }
 
 func (gs *GSlides) createPres() {
-	slideName := "Sprint Demo " + strconv.Itoa(gs.pivIteration.Number)
-
-	gs.delExisting(slideName)
+	gs.delExisting(gs.opts.DeckName)
 
 	driveFile := &drive.File{
 		MimeType:    "application/vnd.google-apps.presentation",
-		Name:        slideName,
+		Name:        gs.opts.DeckName,
 		TeamDriveId: softwareTeamDriveId,
 		Parents:     []string{sprintFolder},
 	}

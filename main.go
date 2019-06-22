@@ -35,7 +35,12 @@ func main() {
 		"",
 		fmt.Sprintf("exports the given Google API token JSON, this token will be stored under %s and overwrite any existing token",
 			gSlideCreds.Path))
-	print(oauthClientIdFile)
+
+	deckName := flag.StringP(
+		"deck-name",
+		"d",
+		"",
+		getDefaultDeckName("[current sprint]"))
 
 	fCreate := flag.BoolP("force", "f", false, "overwrite an existing presentation")
 	showVer := flag.BoolP("version", "v", false, "show the current version")
@@ -81,7 +86,12 @@ func main() {
 
 	gsOpts := export.Opts{
 		ForceCreate: *fCreate,
-		DeckName: getDefaultDeckName(piv.Iterations[0].Number),
+	}
+
+	if *deckName == "" {
+		gsOpts.DeckName = getDefaultDeckName(strconv.Itoa(piv.Iterations[0].Number))
+	} else {
+		gsOpts.DeckName = *deckName
 	}
 
 	gs := export.New(gSlideCreds, &gsOpts, logger, piv.Iterations[0])
@@ -89,6 +99,6 @@ func main() {
 	gs.Export()
 }
 
-func getDefaultDeckName(sprint int) string {
-	return fmt.Sprintf("Sprint Demo %s",strconv.Itoa(sprint))
+func getDefaultDeckName(sprint string) string {
+	return fmt.Sprintf("Sprint Demo %s", sprint)
 }

@@ -1,24 +1,26 @@
 #!/usr/bin/env groovy
 
-@Library('lco-shared-libs@0.0.5') _
+@Library('lco-shared-libs@0.1.0') _
 
 pipeline {
 	agent any
 	stages {
 		stage('Build') {
 			steps {
+			// TODO: gzip the binary
 				sh 'make'
+			}
+			post {
+			    success { archiveArtifacts artifacts: "pivex.gz", fingerprint: true }
 			}
 		}
 		stage('Release') {
 			steps {
-				sh ':'
+				githubRelease('tag', 'description', 'filename', 'application/gzip')
 			}
 		}
 	}
 	post {
-		always {
-			slack()
-		}
+		always { postBuildNotify() }
 	}
 }
