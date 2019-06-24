@@ -1,44 +1,44 @@
 # pivex
+Utility that exports Pivotal stories to a Google Slides deck in the software
+team shared Google Drive.
 
-### Prerequisites
-- **Go**	
-	Make sure Go is installed. If you don't have Go environment created already:
-	```
-	mkdir -p ~/go/{src,bin,pkg}
-	export GOPATH="~/go"
-	```
-- **Pivex credentials directory**  
-	Credentials used in `pivex` are stored under `~/.pivex`, create this
-	directory:
-	```
-	mkdir ~/.pivex
-	```
-  - **Pivotal API key**  
-	Can be found under a user's [profile settings](https://www.pivotaltracker.com/profile).
-	Copy the API key into a file and put it in the `pivex` credentials
-	directory:
-	```
-	echo 'my-api-key' > ~/.pivex/pivotal-token
-	```
-  - **Google API credentials**  
-	Select `pivex` from the list of
-	[Google APIs](https://console.developers.google.com/apis/credentials?project=lco-internal&folder&organizationId=78492096084)
-	and click `DOWNLOAD JSON`. Then rename the JSON credentials to
-	`api-creds.json` and move them into the `pivex` credentials directory:
-	```
-	mv pivex-creds.json ~/.pivex
-	```
+## Requirements
+- **Pivotal API key**: Can be found under a user's
+[profile settings](https://www.pivotaltracker.com/profile).
+- **Google Slides API OAuth 2.0 client ID**: Download the
+[Client ID](http://developers.lco.gtn/pivex-gslides-oauth2.0-client-id.json).
+
+## Build
+Build a binary to use:
+```
+make
+```
 
 ## Installation
-In the project directory:
-```
-go get
-go install
-```
+Either build the binary manually or download the pre-built
+[asset](https://github.com/LCOGT/pivex/releases).
 
 ## Usage
+When the program is run for the first time, you'll need to specify the file
+names for both the Pivotal API token and the Google Drive OAuth 2.0 Client ID:
+```
+pivex --google-client-id-file client-id.json --pivotal-api-token-file pivotal-api
+```
+
+You will be prompted with an OAuth page in your browser to allow access to your
+Google Drive account. Once you have allowed access, paste the generated
+authorization code into the application prompt.
+
+These credentials are now stored on your machine and will not have to be
+retrieved again.
+
+Once the application has finished running, the slides will be generated and
+available on the software team drive.
+
+To generate the slides again in the future, just run the application:
 ```
 pivex
 ```
-The first time you run this program, you will be prompted with an OAuth consent
-screen.
+
+## License
+[GPLv3](LICENSE)

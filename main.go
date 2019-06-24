@@ -20,17 +20,17 @@ func main() {
 	box := packr.New("version", "./static")
 
 	pivCreds := credentials.NewPivotal(logger)
-	pivApiToken := flag.StringP(
-		"pivotal-api-token",
+	pivApiTokenFile := flag.StringP(
+		"pivotal-api-token-file",
 		"p",
 		"",
 		fmt.Sprintf(
-			"exports the given Pivotal API token, this token will be stored under %s and overwrite any existing token",
+			"exports the Pivotal API token from the given file, this token will be stored under %s and overwrite any existing token",
 			pivCreds.Path))
 
 	gSlideCreds := credentials.NewGoogleSlides(logger)
 	oauthClientIdFile := flag.StringP(
-		"google-token",
+		"google-client-id-file",
 		"g",
 		"",
 		fmt.Sprintf("exports the given Google API token JSON, this token will be stored under %s and overwrite any existing token",
@@ -59,7 +59,13 @@ func main() {
 		os.Exit(0)
 	}
 
-	pivCreds.ApiToken = *pivApiToken
+	if *pivApiTokenFile != "" {
+		err := pivCreds.CopyApiTokenFile(*pivApiTokenFile)
+
+		if err != nil {
+			logger.Panicln(err)
+		}
+	}
 
 	pivCredsErr := pivCreds.Init()
 

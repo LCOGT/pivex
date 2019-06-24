@@ -83,6 +83,8 @@ func (gs *GoogleSlides) generateToken() (*oauth2.Token, error) {
 
 	openBrowser(authUrl)
 
+	print("Please enter the Google authorization code: ")
+
 	var authCode string
 	if _, err := fmt.Scan(&authCode); err != nil {
 		log.Fatalf("Unable to read authorization code: %v", err)
@@ -103,7 +105,6 @@ func (gs *GoogleSlides) getOauth2Config() (*oauth2.Config, error) {
 		return nil, errors.New("Unable to read file " + gs.getOauth2TokenFilepath())
 	}
 
-	// If modifying these scopes, delete your previously saved client_secret.json
 	config, err := google.ConfigFromJSON(
 		b,
 		"https://www.googleapis.com/auth/presentations.readonly",

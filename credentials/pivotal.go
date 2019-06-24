@@ -15,19 +15,13 @@ func NewPivotal(logger *log.Logger) *Pivotal {
 }
 
 func (p *Pivotal) Init() error {
-	if p.ApiToken == "" && !p.doesApiTokenFileExist() {
+	if !p.doesApiTokenFileExist() {
 		return errors.New("Pivotal credentials do not exist and have not been specified")
-	} else if p.ApiToken != "" {
-		return p.writeApiTokenToFile()
 	} else {
 		p.ApiToken = p.getApiTokenFromFile()
 
 		return nil
 	}
-}
-
-func (p *Pivotal) writeApiTokenToFile() error {
-	return writeFile(p.ApiToken, p.getApiTokenFilepath())
 }
 
 func (p *Pivotal) getApiTokenFromFile() string {
@@ -40,4 +34,8 @@ func (p *Pivotal) getApiTokenFilepath() string {
 
 func (p *Pivotal) doesApiTokenFileExist() bool {
 	return doesFileExist(p.getApiTokenFilepath())
+}
+
+func (p *Pivotal) CopyApiTokenFile(src string) error {
+	return copyFile(src, p.getApiTokenFilepath())
 }
